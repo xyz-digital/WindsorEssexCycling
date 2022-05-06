@@ -1,0 +1,13 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+
+    implementation project(':brouter-mapaccess')
+    implementation project(':brouter-util')
+    implementation project(':brouter-expressions')
+    implementation project(':brouter-codec')
+	testImplementation 'junit:junit:4.13.1'
+
+}

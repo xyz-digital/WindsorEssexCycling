@@ -30,7 +30,10 @@ if (process.env.NODE_ENV === 'production') {
 
 const VERSION = 'v0.1'; // TODO: Bump when pushing new version in production
 
-function checkQuerySelector(parent: Element | Document, selector: string): Element {
+function checkQuerySelector(
+  parent: Element | Document,
+  selector: string
+): Element {
   const element = parent.querySelector(selector);
   if (element == null) {
     console.error('Parent: ', parent);
@@ -154,7 +157,9 @@ document.addEventListener('DOMContentLoaded', function () {
         closeLabel: 'Go to map',
       });
 
-      modal.setContent(checkQuerySelector(document, '#legend .iframe').innerHTML);
+      modal.setContent(
+        checkQuerySelector(document, '#legend .iframe').innerHTML
+      );
       modal.open();
     },
     'Legend'
@@ -167,6 +172,22 @@ document.addEventListener('DOMContentLoaded', function () {
     },
     'About'
   ).addTo(map);
+
+  // ==============================
+  // Display a test routing request
+  // ==============================
+  fetch(
+    'http://localhost:17777/brouter?lonlats=-83.014811,42.323696|-82.999228,42.291768&nogos=&profile=trekking&alternativeidx=0&format=geojson'
+  ).then(async (res) => {
+    const route_geojson = await res.json();
+    L.geoJSON(route_geojson, {
+      style: {
+        color: '#b35a54',
+        weight: 5,
+        opacity: 1.0,
+      },
+    }).addTo(map);
+  });
 
   // =============
   // Handle legend
@@ -183,15 +204,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (shouldLegendOpen) {
-      (checkQuerySelector(document, '#map') as HTMLElement).style.right = '300px';
-      (checkQuerySelector(document, '#legend .iframe') as HTMLElement).style.display = 'initial';
-      (checkQuerySelector(document, '#legend') as HTMLElement).style.width = '300px';
-      (checkQuerySelector(document, '#legend button') as HTMLElement).innerText = '❯';
+      (checkQuerySelector(document, '#map') as HTMLElement).style.right =
+        '300px';
+      (
+        checkQuerySelector(document, '#legend .iframe') as HTMLElement
+      ).style.display = 'initial';
+      (checkQuerySelector(document, '#legend') as HTMLElement).style.width =
+        '300px';
+      (
+        checkQuerySelector(document, '#legend button') as HTMLElement
+      ).innerText = '❯';
     } else {
-      (checkQuerySelector(document, '#map') as HTMLElement).style.right = '42px';
-      (checkQuerySelector(document, '#legend .iframe') as HTMLElement).style.display = 'none';
-      (checkQuerySelector(document, '#legend') as HTMLElement).style.width = '42px';
-      (checkQuerySelector(document, '#legend button') as HTMLElement).innerText = '❮';
+      (checkQuerySelector(document, '#map') as HTMLElement).style.right =
+        '42px';
+      (
+        checkQuerySelector(document, '#legend .iframe') as HTMLElement
+      ).style.display = 'none';
+      (checkQuerySelector(document, '#legend') as HTMLElement).style.width =
+        '42px';
+      (
+        checkQuerySelector(document, '#legend button') as HTMLElement
+      ).innerText = '❮';
     }
   }
 
@@ -199,27 +232,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
   window.addEventListener('resize', handleResize);
 
-  (checkQuerySelector(document, '#legend button') as HTMLElement)
-    .addEventListener('click', function (event: MouseEvent) {
-      event.preventDefault();
+  (
+    checkQuerySelector(document, '#legend button') as HTMLElement
+  ).addEventListener('click', function (event: MouseEvent) {
+    event.preventDefault();
 
-      if ((checkQuerySelector(document, '#legend button') as HTMLElement).innerText == '❮') {
-        if (hasLocalStorage) {
-          window.localStorage.isLegendOpen = JSON.stringify(true);
-        }
-        (checkQuerySelector(document, '#map') as HTMLElement).style.right = '300px';
-        (checkQuerySelector(document, '#legend .iframe') as HTMLElement).style.display = 'initial';
-        (checkQuerySelector(document, '#legend') as HTMLElement).style.width = '300px';
-        (checkQuerySelector(document, '#legend button') as HTMLElement).innerText = '❯';
-      } else {
-        if (hasLocalStorage) {
-          window.localStorage.isLegendOpen = JSON.stringify(false);
-        }
-        (checkQuerySelector(document, '#map') as HTMLElement).style.right = '42px';
-        (checkQuerySelector(document, '#legend .iframe') as HTMLElement).style.display = 'none';
-        (checkQuerySelector(document, '#legend') as HTMLElement).style.width = '42px';
-        (checkQuerySelector(document, '#legend button') as HTMLElement).innerText = '❮';
+    if (
+      (checkQuerySelector(document, '#legend button') as HTMLElement)
+        .innerText == '❮'
+    ) {
+      if (hasLocalStorage) {
+        window.localStorage.isLegendOpen = JSON.stringify(true);
       }
-      map.invalidateSize();
-    });
+      (checkQuerySelector(document, '#map') as HTMLElement).style.right =
+        '300px';
+      (
+        checkQuerySelector(document, '#legend .iframe') as HTMLElement
+      ).style.display = 'initial';
+      (checkQuerySelector(document, '#legend') as HTMLElement).style.width =
+        '300px';
+      (
+        checkQuerySelector(document, '#legend button') as HTMLElement
+      ).innerText = '❯';
+    } else {
+      if (hasLocalStorage) {
+        window.localStorage.isLegendOpen = JSON.stringify(false);
+      }
+      (checkQuerySelector(document, '#map') as HTMLElement).style.right =
+        '42px';
+      (
+        checkQuerySelector(document, '#legend .iframe') as HTMLElement
+      ).style.display = 'none';
+      (checkQuerySelector(document, '#legend') as HTMLElement).style.width =
+        '42px';
+      (
+        checkQuerySelector(document, '#legend button') as HTMLElement
+      ).innerText = '❮';
+    }
+    map.invalidateSize();
+  });
 });
