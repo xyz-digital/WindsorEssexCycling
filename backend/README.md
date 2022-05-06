@@ -15,6 +15,8 @@ Build JAR file for server and map creator with all dependent classes:
 ./gradlew clean build fatJar
 ```
 
+Before running the server, make sure you have downloaded the appropriate segment files. Run the `./update_segments.sh` script to automatically fetch the most up-to-date segment files for Windsor-Essex from [brouter.de](http://brouter.de/brouter/segments4/).
+
 Run HTTP server:
 
 Helpers scripts are provided in `misc/scripts/standalone` to quickly spawn a
