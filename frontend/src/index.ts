@@ -1,4 +1,4 @@
-import L from 'leaflet';
+import L, { LeafletKeyboardEvent, LeafletMouseEvent } from 'leaflet';
 
 import '@bagage/leaflet.restoreview';
 import 'leaflet-fullhash';
@@ -173,20 +173,66 @@ document.addEventListener('DOMContentLoaded', function () {
     'About'
   ).addTo(map);
 
-  // ==============================
-  // Display a test routing request
-  // ==============================
-  fetch(
-    'http://localhost:17777/brouter?lonlats=-83.014811,42.323696|-82.999228,42.291768&nogos=&profile=trekking&alternativeidx=0&format=geojson'
-  ).then(async (res) => {
-    const route_geojson = await res.json();
-    L.geoJSON(route_geojson, {
-      style: {
-        color: '#b35a54',
-        weight: 5,
-        opacity: 1.0,
-      },
-    }).addTo(map);
+  // ==============
+  // Set up routing
+  // ==============
+  L.DomUtil.addClass(map.getContainer(), 'crosshair-cursor-enabled');
+  var routeMarkers: L.Marker[] = [];
+
+  const markerIcon = L.icon({
+    iconSize: [25, 41],
+    iconAnchor: [10, 41],
+    popupAnchor: [2, -40],
+    iconUrl: 'https://unpkg.com/leaflet@1.6/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.6/dist/images/marker-shadow.png',
+  });
+
+  // Click map to select route waypoints
+  map.on('click', (e: LeafletMouseEvent) => {
+    const pointLocation = e.latlng;
+    const marker = L.marker(pointLocation, { icon: markerIcon }).addTo(map);
+    routeMarkers.push(marker);
+    // routePoints.push(pointLocation);
+  });
+
+  // Handle pressing Escape key to clear selected points
+  map.on('keyup', (e: LeafletKeyboardEvent) => {
+    if (e.originalEvent.key === 'Escape') {
+      routeMarkers.forEach((routeMarker) => {
+        routeMarker.removeFrom(map);
+      });
+      routeMarkers = [];
+    }
+  });
+
+  // Handle pressing Enter key to make routing request with selected points
+  map.on('keypress', (e: LeafletKeyboardEvent) => {
+    if (e.originalEvent.key === 'Enter' && routeMarkers.length > 1) {
+      var routeString = '';
+      routeMarkers.forEach((routeMarker, index) => {
+        if (index !== 0) {
+          routeString = routeString + '|';
+        }
+        routeString =
+          routeString +
+          routeMarker.getLatLng().lng.toString() +
+          ',' +
+          routeMarker.getLatLng().lat.toString();
+      });
+      fetch(
+        `http://localhost:17777/brouter?lonlats=${routeString}&nogos=&profile=trekking&alternativeidx=0&format=geojson`
+      ).then(async (res) => {
+        const route_geojson = await res.json();
+        L.geoJSON(route_geojson, {
+          style: {
+            color: '#b35a54',
+            weight: 5,
+            opacity: 1.0,
+          },
+        }).addTo(map);
+        routeMarkers = [];
+      });
+    }
   });
 
   // =============

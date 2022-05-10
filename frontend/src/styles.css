@@ -1,15 +1,19 @@
-
 @font-face {
   font-family: 'Roboto';
   font-style: normal;
   font-weight: 400;
   src: url('./webfonts/roboto-v20-latin-regular.eot'); /* IE9 Compat Modes */
   src: local('Roboto'), local('Roboto-Regular'),
-  url('./webfonts/roboto-v20-latin-regular.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
-  url('./webfonts/roboto-v20-latin-regular.woff2') format('woff2'), /* Super Modern Browsers */
-  url('./webfonts/roboto-v20-latin-regular.woff') format('woff'), /* Modern Browsers */
-  url('./webfonts/roboto-v20-latin-regular.ttf') format('truetype'), /* Safari, Android, iOS */
-  url('./webfonts/roboto-v20-latin-regular.svg#Roboto') format('svg'); /* Legacy iOS */
+    url('./webfonts/roboto-v20-latin-regular.eot?#iefix')
+      format('embedded-opentype'),
+    /* IE6-IE8 */ url('./webfonts/roboto-v20-latin-regular.woff2')
+      format('woff2'),
+    /* Super Modern Browsers */ url('./webfonts/roboto-v20-latin-regular.woff')
+      format('woff'),
+    /* Modern Browsers */ url('./webfonts/roboto-v20-latin-regular.ttf')
+      format('truetype'),
+    /* Safari, Android, iOS */
+      url('./webfonts/roboto-v20-latin-regular.svg#Roboto') format('svg'); /* Legacy iOS */
 }
 
 html {
@@ -31,7 +35,8 @@ p {
   text-indent: 2em;
 }
 
-div#modal-content, div#full-legend {
+div#modal-content,
+div#full-legend {
   display: none;
 }
 
@@ -49,7 +54,8 @@ div#map {
   color: #2e4369;
 }
 
-.tingle-modal a, .tingle-modal a:visited {
+.tingle-modal a,
+.tingle-modal a:visited {
   color: #2e4369;
 }
 
@@ -117,4 +123,8 @@ div#map {
 
 .leaflet-control .fa {
   font-size: 14px;
+}
+
+.leaflet-container.crosshair-cursor-enabled {
+  cursor: crosshair;
 }
