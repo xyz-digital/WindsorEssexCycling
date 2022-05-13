@@ -219,8 +219,9 @@ document.addEventListener('DOMContentLoaded', function () {
           ',' +
           routeMarker.getLatLng().lat.toString();
       });
+
       fetch(
-        `http://localhost:17777/brouter?lonlats=${routeString}&nogos=&profile=trekking&alternativeidx=0&format=geojson`
+        `${process.env.BASE_URL}/brouter?lonlats=${routeString}&nogos=&profile=trekking&alternativeidx=0&format=geojson`
       ).then(async (res) => {
         const route_geojson = await res.json();
         L.geoJSON(route_geojson, {
