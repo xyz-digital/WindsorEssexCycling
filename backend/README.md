@@ -11,7 +11,7 @@ For more infos see [http://brouter.de/brouter](http://brouter.de/brouter).
 ### Ubuntu
 
 ```bash
-apt-get install openjdk-17-jdk
+apt-get install openjdk-16-jdk
 ```
 
 ## Build and Run Server
