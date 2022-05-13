@@ -6,6 +6,14 @@ and energy-based car routing.
 
 For more infos see [http://brouter.de/brouter](http://brouter.de/brouter).
 
+## Install Dependencies
+
+### Ubuntu
+
+```bash
+apt-get install openjdk-17-jdk
+```
+
 ## Build and Run Server
 
 Build JAR file for server and map creator with all dependent classes:
