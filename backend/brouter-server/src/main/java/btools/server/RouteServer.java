@@ -34,6 +34,15 @@ import btools.server.request.RequestHandler;
 import btools.server.request.ServerHandler;
 import btools.util.StackSampler;
 
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
+import com.mongodb.DB;
+import com.mongodb.DBCollection;
+import com.mongodb.DBObject;
+import com.mongodb.BasicDBObject;
+com.mongodb.client.model.geojson.LineString;
+
+
 public class RouteServer extends Thread implements Comparable<RouteServer>
 {
   public static final String PROFILE_UPLOAD_URL = "/brouter/profile";
@@ -327,6 +336,14 @@ public class RouteServer extends Thread implements Comparable<RouteServer>
 
   public static void main(String[] args) throws Exception
   {
+
+        MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://localhost:27017"));
+        DB database = mongoClient.getDB("windsoreessexcycling");
+        DBCollection collection = database.getCollection("nogos");
+        DBObject person = new BasicDBObject()
+                            .append("name", "Jo Bloggs");
+        collection.insert(person);
+
         System.out.println("BRouter " + OsmTrack.version + " / " + OsmTrack.versionDate);
         if ( args.length != 5 && args.length != 6)
         {
