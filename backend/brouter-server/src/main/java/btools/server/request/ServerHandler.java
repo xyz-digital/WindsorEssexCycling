@@ -296,9 +296,16 @@ public class ServerHandler extends RequestHandler {
     return n;
   }
 
+  private getAllNogosFromDB = () {
+    return []
+  }
+
   private List<OsmNodeNamed> readNogoPolygons()
   {
     List<OsmNodeNamed> result = new ArrayList<OsmNodeNamed>();
+    if(params.get('profile') == 'trekking') {
+      parseNogoPolygons( getAllNogosFromDB(), result, false);
+    }
     parseNogoPolygons( params.get("polylines"), result, false );
     parseNogoPolygons( params.get("polygons"), result, true );
     return result.size() > 0 ? result : null;
