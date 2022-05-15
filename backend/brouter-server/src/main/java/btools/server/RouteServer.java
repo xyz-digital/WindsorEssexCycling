@@ -40,7 +40,7 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBObject;
 import com.mongodb.BasicDBObject;
-com.mongodb.client.model.geojson.LineString;
+import com.mongodb.client.model.geojson.LineString;
 
 
 public class RouteServer extends Thread implements Comparable<RouteServer>
