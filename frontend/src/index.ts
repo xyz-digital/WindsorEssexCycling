@@ -103,7 +103,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const map = new L.Map('map', {
     zoomControl: true,
-    //layers: [cyclosm],
     layers: [cyclosm],
   });
 
@@ -126,27 +125,203 @@ document.addEventListener('DOMContentLoaded', function () {
   // Add a scale
   L.control.scale().addTo(map);
 
-  // Set up routing / edit / help / legend buttons
-  L.easyButton(
-    'fa-route',
-    function () {
-      window.open(
-        'http://brouter.de/brouter-web/' + window.location.hash,
-        '_blank'
-      );
-    },
-    'Create an itinerary with BRouter'
-  ).addTo(map);
-  L.easyButton(
-    'fa-edit',
-    function () {
-      window.open(
-        'https://www.openstreetmap.org/edit' + window.location.hash,
-        '_blank'
-      );
-    },
-    'Edit the map'
-  ).addTo(map);
+  // Crosshair cursor
+  L.DomUtil.addClass(map.getContainer(), 'crosshair-cursor-enabled');
+
+  // =========
+  // Variables
+  // =========
+
+  var isEditingNogos = false;
+  var newRouteMarkers: L.Marker[] = []; // markers currently being selected for a new route
+  var newNogos: GeoJSON.LineString[] = []; // new nogo routes to be submitted
+  var markerLayerGroup = L.layerGroup().addTo(map); // all markers to show on map
+  var routeLayerGroup = L.geoJSON().addTo(map); // all routes to show on map
+
+  const markerIcon = L.icon({
+    iconSize: [25, 41],
+    iconAnchor: [10, 41],
+    popupAnchor: [2, -40],
+    iconUrl: 'https://unpkg.com/leaflet@1.6/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.6/dist/images/marker-shadow.png',
+  });
+
+  // =======================
+  // Handle map interactions
+  // =======================
+
+  const clearNewRouteMarkers = () => {
+    newRouteMarkers.forEach((routeMarker) => {
+      routeMarker.removeFrom(map);
+    });
+    newRouteMarkers = [];
+  };
+
+  // Click map to select route waypoints
+  map.on('click', (e: LeafletMouseEvent) => {
+    const pointLocation = e.latlng;
+    const marker = L.marker(pointLocation, { icon: markerIcon }).addTo(
+      markerLayerGroup
+    );
+    newRouteMarkers.push(marker);
+  });
+
+  // Handle pressing Escape key to clear selected points
+  map.on('keyup', (e: LeafletKeyboardEvent) => {
+    if (e.originalEvent.key === 'Escape') {
+      clearNewRouteMarkers();
+    }
+  });
+
+  // Handle pressing Enter key to make routing request with selected points
+  map.on('keypress', (e: LeafletKeyboardEvent) => {
+    if (e.originalEvent.key === 'Enter' && newRouteMarkers.length > 1) {
+      fetchDirections();
+    }
+  });
+
+  // ================
+  // Routing handlers
+  // ================
+
+  const fetchDirections = () => {
+    var routeString = '';
+    newRouteMarkers.forEach((routeMarker, index) => {
+      if (index !== 0) {
+        routeString = routeString + '|';
+      }
+      routeString =
+        routeString +
+        routeMarker.getLatLng().lng.toString() +
+        ',' +
+        routeMarker.getLatLng().lat.toString();
+    });
+
+    fetch(
+      `${process.env.BASE_URL}/brouter?lonlats=${routeString}&profile=${
+        isEditingNogos ? 'all' : 'trekking'
+      }&alternativeidx=0&format=geojson`
+    ).then(async (res) => {
+      const route_geojson = await res.json();
+      newNogos.push(route_geojson.features[0].geometry);
+      const layer = L.geoJSON(route_geojson, {
+        style: {
+          color: '#b35a54',
+          weight: 5,
+          opacity: 1.0,
+        },
+      }).addTo(routeLayerGroup);
+      newRouteMarkers = [];
+      if (isEditingNogos) {
+        markerLayerGroup.clearLayers();
+      }
+    });
+  };
+
+  // =============
+  // Nogo handlers
+  // =============
+
+  // TODO: get all nogos and display on map
+
+  const toggleNogoMode = () => {
+    isEditingNogos = !isEditingNogos;
+    nogoButton.state(isEditingNogos ? 'nogoMode' : 'notNogoMode');
+    nogoButton.button.style.backgroundColor = isEditingNogos
+      ? '#8f8f8f'
+      : '#ffffff';
+    nogoControl.update();
+    submitControl.update();
+    markerLayerGroup.clearLayers();
+    routeLayerGroup.clearLayers();
+  };
+
+  const submitNogos = () => {
+    newNogos.forEach((newNogo) => {
+      fetch('/api/nogos', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(newNogo),
+      });
+    });
+  };
+
+  // ======================
+  // Add custom UI controls
+  // ======================
+
+  // Submit button
+  var submitControl = L.control({ position: 'bottomright' });
+  submitControl.onAdd = function () {
+    this._div = L.DomUtil.create('button', 'submit-button');
+    this.update();
+    return this._div;
+  };
+  submitControl.update = function () {
+    const controlDiv: HTMLDivElement = this._div;
+    if (isEditingNogos) {
+      controlDiv.innerHTML = 'Submit nogos</button>';
+      controlDiv.onclick = (e) => {
+        e.stopPropagation();
+        submitNogos();
+      };
+    } else {
+      controlDiv.innerHTML = 'Get directions</button>';
+      controlDiv.onclick = (e) => {
+        e.stopPropagation();
+        fetchDirections();
+      };
+    }
+  };
+  submitControl.addTo(map);
+
+  // Nogo popup when editing
+  var nogoControl = L.control({ position: 'topright' });
+  nogoControl.onAdd = function () {
+    this._div = L.DomUtil.create('div', 'nogo-control');
+    this.update();
+    return this._div;
+  };
+  nogoControl.update = function () {
+    const controlDiv: HTMLDivElement = this._div;
+    if (isEditingNogos) {
+      controlDiv.innerHTML = 'You are adding no-go routes';
+      controlDiv.style.display = 'block';
+    } else {
+      controlDiv.innerHTML = '';
+      controlDiv.style.display = 'none';
+    }
+  };
+  nogoControl.addTo(map);
+
+  // ============
+  // Easy buttons
+  // ============
+
+  // TODO: Easy button for toggling existing nogos
+
+  const nogoButton = L.easyButton({
+    states: [
+      {
+        stateName: 'notNogoMode',
+        icon: 'fa-edit',
+        title: 'Add no-go routes',
+        onClick: function () {
+          toggleNogoMode();
+        },
+      },
+      {
+        stateName: 'nogoMode',
+        icon: 'fa-edit',
+        title: 'Back to routing',
+        onClick: function () {
+          toggleNogoMode();
+        },
+      },
+    ],
+  }).addTo(map);
 
   L.easyButton(
     'fa-question',
@@ -173,72 +348,10 @@ document.addEventListener('DOMContentLoaded', function () {
     'About'
   ).addTo(map);
 
-  // ==============
-  // Set up routing
-  // ==============
-  L.DomUtil.addClass(map.getContainer(), 'crosshair-cursor-enabled');
-  var routeMarkers: L.Marker[] = [];
-
-  const markerIcon = L.icon({
-    iconSize: [25, 41],
-    iconAnchor: [10, 41],
-    popupAnchor: [2, -40],
-    iconUrl: 'https://unpkg.com/leaflet@1.6/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.6/dist/images/marker-shadow.png',
-  });
-
-  // Click map to select route waypoints
-  map.on('click', (e: LeafletMouseEvent) => {
-    const pointLocation = e.latlng;
-    const marker = L.marker(pointLocation, { icon: markerIcon }).addTo(map);
-    routeMarkers.push(marker);
-    // routePoints.push(pointLocation);
-  });
-
-  // Handle pressing Escape key to clear selected points
-  map.on('keyup', (e: LeafletKeyboardEvent) => {
-    if (e.originalEvent.key === 'Escape') {
-      routeMarkers.forEach((routeMarker) => {
-        routeMarker.removeFrom(map);
-      });
-      routeMarkers = [];
-    }
-  });
-
-  // Handle pressing Enter key to make routing request with selected points
-  map.on('keypress', (e: LeafletKeyboardEvent) => {
-    if (e.originalEvent.key === 'Enter' && routeMarkers.length > 1) {
-      var routeString = '';
-      routeMarkers.forEach((routeMarker, index) => {
-        if (index !== 0) {
-          routeString = routeString + '|';
-        }
-        routeString =
-          routeString +
-          routeMarker.getLatLng().lng.toString() +
-          ',' +
-          routeMarker.getLatLng().lat.toString();
-      });
-
-      fetch(
-        `${process.env.BASE_URL}/brouter?lonlats=${routeString}&nogos=&profile=trekking&alternativeidx=0&format=geojson`
-      ).then(async (res) => {
-        const route_geojson = await res.json();
-        L.geoJSON(route_geojson, {
-          style: {
-            color: '#b35a54',
-            weight: 5,
-            opacity: 1.0,
-          },
-        }).addTo(map);
-        routeMarkers = [];
-      });
-    }
-  });
-
   // =============
   // Handle legend
   // =============
+
   function handleResize() {
     let shouldLegendOpen = true;
 
