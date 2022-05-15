@@ -316,11 +316,8 @@ public class ServerHandler extends RequestHandler {
 
   private List<OsmNodeNamed> readNogoPolygons()
   {
-    System.out.println("HELOO");
     List<OsmNodeNamed> result = new ArrayList<OsmNodeNamed>();
-    System.out.println(params.get("profile"));
     if("trekking".equals(params.get("profile"))) {
-      System.out.println("MATCH");
       parseNogoPolygons( getAllNogosFromDB(), result, false);
     }
     parseNogoPolygons( params.get("polylines"), result, false );

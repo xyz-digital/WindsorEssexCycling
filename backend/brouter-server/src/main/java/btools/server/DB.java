@@ -12,7 +12,7 @@ public class DB {
 
   public static void init() {
     Client = MongoClients.create("mongodb://localhost:27017");
-    database = Client.getDatabase("windsoreessexcycling");
+    database = Client.getDatabase("windsoressexcycling");
     Nogo = database.getCollection("nogos");
   }
 }
