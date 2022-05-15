@@ -30,19 +30,11 @@ import btools.router.OsmTrack;
 import btools.router.ProfileCache;
 import btools.router.RoutingContext;
 import btools.router.RoutingEngine;
+import btools.server.DB;
 import btools.server.request.ProfileUploadHandler;
 import btools.server.request.RequestHandler;
 import btools.server.request.ServerHandler;
 import btools.util.StackSampler;
-
-import org.bson.Document;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.model.geojson.LineString;
-import com.mongodb.client.model.geojson.Position;
-
 
 public class RouteServer extends Thread implements Comparable<RouteServer>
 {
@@ -337,19 +329,22 @@ public class RouteServer extends Thread implements Comparable<RouteServer>
 
   public static void main(String[] args) throws Exception
   {
-        MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017");
-        MongoDatabase database = mongoClient.getDatabase("windsoreessexcycling");
-        MongoCollection collection = database.getCollection("nogos");
-        Document doc = new Document()
-                            .append("type", "LineString")
-                            .append("coordinates", Arrays.asList(
-                                Arrays.asList(-83.027374, 42.314067),
-                                Arrays.asList(-83.027012, 42.313497),
-                                Arrays.asList(-83.026469, 42.312634),
-                                Arrays.asList(-83.026316, 42.312396)
-                              )
-                            );
-        collection.insertOne(doc);
+        DB.init(); 
+        // MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017");
+        // MongoDatabase database = mongoClient.getDatabase("windsoreessexcycling");
+        // MongoCollection collection = database.getCollection("nogos");
+        // // Document doc = new Document()
+        // //                     .append("type", "LineString")
+        // //                     .append("coordinates", Arrays.asList(
+        // //                         Arrays.asList(-83.027374, 42.314067),
+        // //                         Arrays.asList(-83.027012, 42.313497),
+        // //                         Arrays.asList(-83.026469, 42.312634),
+        // //                         Arrays.asList(-83.026316, 42.312396)
+        // //                       )
+        // //                     );
+        // // collection.insertOne(doc);
+
+        // collection.find().forEach(doc -> System.out.println(doc));
 
         System.out.println("BRouter " + OsmTrack.version + " / " + OsmTrack.versionDate);
         if ( args.length != 5 && args.length != 6)

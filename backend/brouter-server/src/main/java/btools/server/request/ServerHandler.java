@@ -5,6 +5,7 @@ import btools.router.OsmNodeNamed;
 import btools.router.OsmNogoPolygon;
 import btools.router.OsmTrack;
 import btools.router.RoutingContext;
+import btools.server.DB;
 import btools.server.ServiceContext;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -12,6 +13,8 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import org.bson.Document;
 
 /**
  * URL query parameter handler for web and standalone server. Supports all
@@ -296,14 +299,28 @@ public class ServerHandler extends RequestHandler {
     return n;
   }
 
-  private getAllNogosFromDB = () {
-    return []
+  private String getAllNogosFromDB() {
+    String linePoints = "";
+
+    for (Object obj: DB.Nogo.find()) {
+      Document nogo = (Document) obj;
+      List<List<Double>> coords = (List<List<Double>>) nogo.get("coordinates");
+
+      for (int j = 0; j < coords.size(); j++) {
+        List<Double> coord = coords.get(j);
+        linePoints += coord.get(0) + "," + coord.get(1) + ",";
+      }
+    }
+    return linePoints;
   }
 
   private List<OsmNodeNamed> readNogoPolygons()
   {
+    System.out.println("HELOO");
     List<OsmNodeNamed> result = new ArrayList<OsmNodeNamed>();
-    if(params.get('profile') == 'trekking') {
+    System.out.println(params.get("profile"));
+    if("trekking".equals(params.get("profile"))) {
+      System.out.println("MATCH");
       parseNogoPolygons( getAllNogosFromDB(), result, false);
     }
     parseNogoPolygons( params.get("polylines"), result, false );
