@@ -14,5 +14,8 @@ module.exports = merge(common, {
     compress: true,
     port: 1234,
     hot: false,
+    proxy: {
+      '/api': 'http://localhost:4242',
+    },
   },
 });
