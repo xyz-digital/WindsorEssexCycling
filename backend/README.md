@@ -16,24 +16,18 @@ apt-get install openjdk-16-jdk
 
 ## Build and Run Server
 
-Build JAR file for server and map creator with all dependent classes:
-
 ```
-# places JAR file in brouter-server/build/libs/
-./gradlew clean build fatJar
+# build the server
+./build.sh
+
+# update the most up-to-date segment files for Windsor-Essex (must have these downloaded to run the server)
+./update_segments.sh
+
+# run the server on Linux
+./run.sh
 ```
 
-Before running the server, make sure you have downloaded the appropriate segment files. Run the `./update_segments.sh` script to automatically fetch the most up-to-date segment files for Windsor-Essex from [brouter.de](http://brouter.de/brouter/segments4/).
-
-Run HTTP server:
-
-Helpers scripts are provided in `misc/scripts/standalone` to quickly spawn a
-BRouter HTTP server for various platforms.
-
-```
-# for Linux
-./misc/scripts/standalone/server.sh
-```
+To run the Brouter HTTP server on another platform, use the helper scripts provided in `misc/scripts/standalone`.
 
 The API endpoints exposed by this HTTP server are documented in the
 [`brouter-server/src/main/java/btools/server/request/ServerHandler.java`](brouter-server/src/main/java/btools/server/request/ServerHandler.java)
@@ -45,7 +39,7 @@ E.g. HTTP request:
 http://localhost:17777/brouter?lonlats=-83.014811,42.323696|-82.999228,42.291768&nogos=&profile=trekking&alternativeidx=0&format=geojson
 ```
 
-## Get the required segments (data) files
+## Segments (data) files
 
 Routing data files are organised as 5\*5 degree files,
 with the filename containing the south-west corner
