@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var allNogosLayerGroup = L.geoJSON().addTo(map); // all nogos to show on map
 
   // Colors
-  const routeDefaultColor = '#b35a54';
+  const routeDefaultColor = '#2aa38d';
   const nogoDefaultColor = '#b35a54';
   const nogoSelectedColor = '#abb357';
   const nogoUnsavedColor = '#2aa38d';
@@ -223,14 +223,16 @@ document.addEventListener('DOMContentLoaded', function () {
       }&alternativeidx=0&format=geojson`
     ).then(async (res) => {
       const route_geojson = await res.json();
-      newNogos.push(route_geojson.features[0].geometry);
+      if (isEditingNogos) {
+        newNogos.push(route_geojson.features[0].geometry);
+      }
       const layer = L.geoJSON(route_geojson, {
         style: {
           color: isEditingNogos ? nogoUnsavedColor : routeDefaultColor,
           weight: 5,
           opacity: 1.0,
         },
-      }).addTo(routeLayerGroup);
+      }).addTo(isEditingNogos ? allNogosLayerGroup : routeLayerGroup);
       newRouteMarkers = [];
       if (isEditingNogos) {
         submitControl.update();
