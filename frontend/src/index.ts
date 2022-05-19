@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
       VERSION
   );
 
-  if (!map.restoreView()) {
+  if (!(map as any).restoreView()) {
     // Default view on Essex County, ON.
     map.setView([42.1659, -82.6633], 11);
   }
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const allMapLayers = {
     cyclosm: cyclosm,
   };
-  L.hash(map, allMapLayers);
+  (L as any).hash(map, allMapLayers);
 
   // Add a scale
   L.control.scale().addTo(map);
@@ -132,11 +132,27 @@ document.addEventListener('DOMContentLoaded', function () {
   // Variables
   // =========
 
+  // Modes
   var isEditingNogos = false;
+  var showAllNogos = false;
+
+  // Map feature containers
   var newRouteMarkers: L.Marker[] = []; // markers currently being selected for a new route
   var newNogos: GeoJSON.LineString[] = []; // new nogo routes to be submitted
+  var selectedNogoIds: string[] = []; // selected nogo route IDs to be deleted
+
+  // Layer groups
   var markerLayerGroup = L.layerGroup().addTo(map); // all markers to show on map
   var routeLayerGroup = L.geoJSON().addTo(map); // all routes to show on map
+  var allNogosLayerGroup = L.geoJSON().addTo(map); // all nogos to show on map
+
+  // Colors
+  const routeDefaultColor = '#b35a54';
+  const nogoDefaultColor = '#b35a54';
+  const nogoSelectedColor = '#abb357';
+  const nogoUnsavedColor = '#2aa38d';
+  const buttonDefaultColor = '#ffffff';
+  const buttonActiveColor = '#8f8f8f';
 
   const markerIcon = L.icon({
     iconSize: [25, 41],
@@ -185,6 +201,10 @@ document.addEventListener('DOMContentLoaded', function () {
   // ================
 
   const fetchDirections = () => {
+    if (!newRouteMarkers.length) {
+      return;
+    }
+
     var routeString = '';
     newRouteMarkers.forEach((routeMarker, index) => {
       if (index !== 0) {
@@ -206,13 +226,14 @@ document.addEventListener('DOMContentLoaded', function () {
       newNogos.push(route_geojson.features[0].geometry);
       const layer = L.geoJSON(route_geojson, {
         style: {
-          color: '#b35a54',
+          color: isEditingNogos ? nogoUnsavedColor : routeDefaultColor,
           weight: 5,
           opacity: 1.0,
         },
       }).addTo(routeLayerGroup);
       newRouteMarkers = [];
       if (isEditingNogos) {
+        submitControl.update();
         markerLayerGroup.clearLayers();
       }
     });
@@ -222,38 +243,160 @@ document.addEventListener('DOMContentLoaded', function () {
   // Nogo handlers
   // =============
 
-  // TODO: get all nogos and display on map
+  const fetchAllNogos = async () => {
+    const res = await fetch('/api/nogos', {
+      method: 'GET',
+      headers: {
+        'content-type': 'application/json',
+      },
+    });
 
-  const toggleNogoMode = () => {
-    isEditingNogos = !isEditingNogos;
-    nogoButton.state(isEditingNogos ? 'nogoMode' : 'notNogoMode');
-    nogoButton.button.style.backgroundColor = isEditingNogos
-      ? '#8f8f8f'
-      : '#ffffff';
-    nogoControl.update();
-    submitControl.update();
-    markerLayerGroup.clearLayers();
-    routeLayerGroup.clearLayers();
+    const nogos: (GeoJSON.LineString & { _id: string })[] = await res.json();
+
+    nogos.forEach((nogo) => {
+      L.geoJSON(nogo, {
+        style: {
+          color: nogoDefaultColor,
+          weight: 5,
+          opacity: 1.0,
+        },
+        bubblingMouseEvents: false,
+        onEachFeature: (feature, layer) => {
+          layer.on({
+            click: (e) => {
+              if (!isEditingNogos) {
+                return;
+              }
+
+              const existingSelectedIndex = selectedNogoIds.findIndex(
+                (selectedNogoId) => selectedNogoId === nogo._id
+              );
+
+              if (existingSelectedIndex > -1) {
+                selectedNogoIds.splice(existingSelectedIndex, 1);
+                deleteNogoControl.update();
+                e.target.setStyle({ color: nogoDefaultColor });
+              } else {
+                selectedNogoIds.push(nogo._id);
+                deleteNogoControl.update();
+                e.target.setStyle({ color: nogoSelectedColor });
+              }
+            },
+          });
+        },
+      }).addTo(allNogosLayerGroup);
+    });
   };
 
   const submitNogos = () => {
-    newNogos.forEach((newNogo) => {
-      fetch('/api/nogos', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify(newNogo),
-      });
+    if (!newNogos.length) {
+      return;
+    }
+
+    fetch('/api/nogos', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(newNogos),
+    }).then(() => {
+      newNogos = [];
+      submitControl.update();
+      routeLayerGroup.clearLayers();
+      allNogosLayerGroup.clearLayers();
+      fetchAllNogos();
     });
+  };
+
+  const deleteNogos = () => {
+    if (!selectedNogoIds.length) {
+      return;
+    }
+
+    fetch('/api/nogos/delete', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(selectedNogoIds),
+    }).then(() => {
+      selectedNogoIds = [];
+      deleteNogoControl.update();
+      allNogosLayerGroup.clearLayers();
+      fetchAllNogos();
+    });
+  };
+
+  const toggleShowAllNogos = () => {
+    if (isEditingNogos && showAllNogos) {
+      return;
+    }
+    showAllNogos = !showAllNogos;
+    allNogosButton.state(showAllNogos ? 'showNogos' : 'hideNogos');
+    (allNogosButton as any).button.style.backgroundColor = showAllNogos
+      ? buttonActiveColor
+      : buttonDefaultColor;
+    if (showAllNogos) {
+      fetchAllNogos();
+    } else {
+      allNogosLayerGroup.clearLayers();
+    }
+  };
+
+  const toggleNogoMode = () => {
+    isEditingNogos = !isEditingNogos;
+    addNogosButton.state(isEditingNogos ? 'nogoMode' : 'notNogoMode');
+    (addNogosButton as any).button.style.backgroundColor = isEditingNogos
+      ? buttonActiveColor
+      : buttonDefaultColor;
+    nogoControl.update();
+    submitControl.update();
+    deleteNogoControl.update();
+    markerLayerGroup.clearLayers();
+    routeLayerGroup.clearLayers();
+    if (isEditingNogos) {
+      toggleShowAllNogos();
+    } else {
+      selectedNogoIds = [];
+      allNogosLayerGroup.clearLayers();
+      fetchAllNogos();
+    }
   };
 
   // ======================
   // Add custom UI controls
   // ======================
 
+  // Delete nogo button
+  var deleteNogoControl = (L as any).control({ position: 'bottomright' });
+  deleteNogoControl.onAdd = function () {
+    this._div = L.DomUtil.create('button', 'submit-button');
+    this.update();
+    return this._div;
+  };
+  deleteNogoControl.update = function () {
+    const controlDiv: HTMLDivElement = this._div;
+    controlDiv.onclick = (e) => {
+      e.stopPropagation();
+      deleteNogos();
+    };
+    if (isEditingNogos) {
+      controlDiv.innerHTML =
+        selectedNogoIds.length > 0
+          ? `Delete ${selectedNogoIds.length} nogo${
+              selectedNogoIds.length > 1 ? 's' : ''
+            }`
+          : 'Select nogos to delete';
+      controlDiv.style.display = 'block';
+    } else {
+      controlDiv.innerHTML = '';
+      controlDiv.style.display = 'none';
+    }
+  };
+  deleteNogoControl.addTo(map);
+
   // Submit button
-  var submitControl = L.control({ position: 'bottomright' });
+  var submitControl = (L as any).control({ position: 'bottomright' });
   submitControl.onAdd = function () {
     this._div = L.DomUtil.create('button', 'submit-button');
     this.update();
@@ -262,13 +405,16 @@ document.addEventListener('DOMContentLoaded', function () {
   submitControl.update = function () {
     const controlDiv: HTMLDivElement = this._div;
     if (isEditingNogos) {
-      controlDiv.innerHTML = 'Submit nogos</button>';
+      controlDiv.innerHTML =
+        newNogos.length > 0
+          ? `Add ${newNogos.length} nogo${newNogos.length > 1 ? 's' : ''}`
+          : 'Draw nogo routes to add';
       controlDiv.onclick = (e) => {
         e.stopPropagation();
         submitNogos();
       };
     } else {
-      controlDiv.innerHTML = 'Get directions</button>';
+      controlDiv.innerHTML = 'Get directions';
       controlDiv.onclick = (e) => {
         e.stopPropagation();
         fetchDirections();
@@ -278,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function () {
   submitControl.addTo(map);
 
   // Nogo popup when editing
-  var nogoControl = L.control({ position: 'topright' });
+  var nogoControl = (L as any).control({ position: 'topright' });
   nogoControl.onAdd = function () {
     this._div = L.DomUtil.create('div', 'nogo-control');
     this.update();
@@ -287,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function () {
   nogoControl.update = function () {
     const controlDiv: HTMLDivElement = this._div;
     if (isEditingNogos) {
-      controlDiv.innerHTML = 'You are adding no-go routes';
+      controlDiv.innerHTML = 'You are editing no-go routes';
       controlDiv.style.display = 'block';
     } else {
       controlDiv.innerHTML = '';
@@ -300,14 +446,33 @@ document.addEventListener('DOMContentLoaded', function () {
   // Easy buttons
   // ============
 
-  // TODO: Easy button for toggling existing nogos
+  const allNogosButton = L.easyButton({
+    states: [
+      {
+        stateName: 'hideNogos',
+        icon: 'fa-ban',
+        title: 'Display all no-go routes',
+        onClick: function () {
+          toggleShowAllNogos();
+        },
+      },
+      {
+        stateName: 'showNogos',
+        icon: 'fa-ban',
+        title: 'Hide all no-go routes',
+        onClick: function () {
+          toggleShowAllNogos();
+        },
+      },
+    ],
+  }).addTo(map);
 
-  const nogoButton = L.easyButton({
+  const addNogosButton = L.easyButton({
     states: [
       {
         stateName: 'notNogoMode',
         icon: 'fa-edit',
-        title: 'Add no-go routes',
+        title: 'Edit no-go routes',
         onClick: function () {
           toggleNogoMode();
         },

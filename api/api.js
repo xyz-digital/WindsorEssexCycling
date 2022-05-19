@@ -17,10 +17,21 @@ const run = async () => {
   });
 
   app.post('/api/nogos', async (req, res) => {
-    const coordinates = req.body.coordinates;
-    await Nogo.insertOne({
-      type: 'LineString',
-      coordinates,
+    const newNogos = req.body;
+    newNogos.forEach(async (newNogo) => {
+      const coordinates = newNogo.coordinates;
+      await Nogo.insertOne({
+        type: 'LineString',
+        coordinates,
+      });
+    });
+    res.sendStatus(200);
+  });
+
+  app.post('/api/nogos/delete', async (req, res) => {
+    const nogoIds = req.body;
+    nogoIds.forEach(async (nogoId) => {
+      await Nogo.deleteOne({ _id: new mongodb.ObjectId(nogoId) });
     });
     res.sendStatus(200);
   });
