@@ -302,10 +302,17 @@ public class ServerHandler extends RequestHandler {
   private String getAllNogosFromDB() {
     String linePoints = "";
 
+    Boolean firstObject = true;
     for (Object obj: DB.Nogo.find()) {
       Document nogo = (Document) obj;
       List<List<Double>> coords = (List<List<Double>>) nogo.get("coordinates");
 
+      if (!firstObject) {
+        linePoints += "|";
+      } else {
+        firstObject = false;
+      }
+      
       for (int j = 0; j < coords.size(); j++) {
         List<Double> coord = coords.get(j);
         linePoints += coord.get(0) + "," + coord.get(1) + ",";
