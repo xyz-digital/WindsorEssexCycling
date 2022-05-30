@@ -143,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Layer groups
   var markerLayerGroup = L.layerGroup().addTo(map); // all markers to show on map
+  var cursorLineLayerGroup = L.geoJSON().addTo(map); // line to cursor when drawing routes
   var routeLayerGroup = L.geoJSON().addTo(map); // all routes to show on map
   var allNogosLayerGroup = L.geoJSON().addTo(map); // all nogos to show on map
 
@@ -150,7 +151,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const routeDefaultColor = '#2aa38d';
   const nogoDefaultColor = '#b35a54';
   const nogoSelectedColor = '#abb357';
-  const nogoUnsavedColor = '#2aa38d';
   const buttonDefaultColor = '#ffffff';
   const buttonActiveColor = '#8f8f8f';
 
@@ -173,19 +173,48 @@ document.addEventListener('DOMContentLoaded', function () {
     newRouteMarkers = [];
   };
 
+  const clearRoutes = () => {
+    markerLayerGroup.clearLayers();
+    routeLayerGroup.clearLayers();
+    clearNewRouteMarkers();
+  };
+
   // Click map to select route waypoints
   map.on('click', (e: LeafletMouseEvent) => {
+    if (isEditingNogos && selectedNogoIds.length) {
+      // clicking shouldn't add new markers when selecting nogos to delete
+      return;
+    }
     const pointLocation = e.latlng;
     const marker = L.marker(pointLocation, { icon: markerIcon }).addTo(
       markerLayerGroup
     );
     newRouteMarkers.push(marker);
+    if (isEditingNogos && newRouteMarkers.length >= 2) {
+      fetchDirections();
+    }
+  });
+
+  // Draw line from first marker to cursor when adding nogos
+  map.on('mousemove', (e: LeafletMouseEvent) => {
+    if (isEditingNogos && newRouteMarkers.length === 1) {
+      cursorLineLayerGroup.clearLayers();
+      L.polyline([newRouteMarkers[0].getLatLng(), e.latlng], {
+        color: nogoDefaultColor,
+      }).addTo(cursorLineLayerGroup);
+    }
   });
 
   // Handle pressing Escape key to clear selected points
   map.on('keyup', (e: LeafletKeyboardEvent) => {
     if (e.originalEvent.key === 'Escape') {
       clearNewRouteMarkers();
+      cursorLineLayerGroup.clearLayers();
+      if (isEditingNogos && selectedNogoIds.length) {
+        selectedNogoIds = [];
+        deleteNogoControl.update();
+        fetchAllNogos();
+      }
     }
   });
 
@@ -223,20 +252,18 @@ document.addEventListener('DOMContentLoaded', function () {
       }&alternativeidx=0&format=geojson`
     ).then(async (res) => {
       const route_geojson = await res.json();
-      if (isEditingNogos) {
-        newNogos.push(route_geojson.features[0].geometry);
-      }
-      const layer = L.geoJSON(route_geojson, {
-        style: {
-          color: isEditingNogos ? nogoUnsavedColor : routeDefaultColor,
-          weight: 5,
-          opacity: 1.0,
-        },
-      }).addTo(isEditingNogos ? allNogosLayerGroup : routeLayerGroup);
       newRouteMarkers = [];
       if (isEditingNogos) {
-        submitControl.update();
-        markerLayerGroup.clearLayers();
+        newNogos.push(route_geojson.features[0].geometry);
+        submitNogos();
+      } else {
+        const layer = L.geoJSON(route_geojson, {
+          style: {
+            color: routeDefaultColor,
+            weight: 5,
+            opacity: 1.0,
+          },
+        }).addTo(routeLayerGroup);
       }
     });
   };
@@ -303,8 +330,8 @@ document.addEventListener('DOMContentLoaded', function () {
       body: JSON.stringify(newNogos),
     }).then(() => {
       newNogos = [];
-      submitControl.update();
-      routeLayerGroup.clearLayers();
+      markerLayerGroup.clearLayers();
+      cursorLineLayerGroup.clearLayers();
       allNogosLayerGroup.clearLayers();
       fetchAllNogos();
     });
@@ -351,11 +378,11 @@ document.addEventListener('DOMContentLoaded', function () {
     (addNogosButton as any).button.style.backgroundColor = isEditingNogos
       ? buttonActiveColor
       : buttonDefaultColor;
+    clearRoutes();
     nogoControl.update();
     submitControl.update();
     deleteNogoControl.update();
-    markerLayerGroup.clearLayers();
-    routeLayerGroup.clearLayers();
+    cursorLineLayerGroup.clearLayers();
     if (isEditingNogos) {
       toggleShowAllNogos();
     } else {
@@ -407,16 +434,11 @@ document.addEventListener('DOMContentLoaded', function () {
   submitControl.update = function () {
     const controlDiv: HTMLDivElement = this._div;
     if (isEditingNogos) {
-      controlDiv.innerHTML =
-        newNogos.length > 0
-          ? `Add ${newNogos.length} nogo${newNogos.length > 1 ? 's' : ''}`
-          : 'Draw nogo routes to add';
-      controlDiv.onclick = (e) => {
-        e.stopPropagation();
-        submitNogos();
-      };
+      controlDiv.innerHTML = '';
+      controlDiv.style.display = 'none';
     } else {
       controlDiv.innerHTML = 'Get directions';
+      controlDiv.style.display = 'block';
       controlDiv.onclick = (e) => {
         e.stopPropagation();
         fetchDirections();
@@ -447,6 +469,17 @@ document.addEventListener('DOMContentLoaded', function () {
   // ============
   // Easy buttons
   // ============
+
+  // clear routes button
+  L.easyButton(
+    'fa-refresh',
+    function () {
+      if (!isEditingNogos) {
+        clearRoutes();
+      }
+    },
+    'Clear routes'
+  ).addTo(map);
 
   const allNogosButton = L.easyButton({
     states: [
