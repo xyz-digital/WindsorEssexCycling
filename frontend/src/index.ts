@@ -322,6 +322,27 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    newNogos = newNogos.map((newNogo) => {
+      // Bug in BRouter algorithm allows routes to pass through a polylione nogo if it is perfectly straight
+      // and the requested route does not intersect the nogo at any angle
+      //
+      // This adds a middle point to 2-point nogos to create a slight bend
+      var updatedNewNogo = newNogo;
+      if (newNogo.coordinates.length === 2) {
+        const newCoord: GeoJSON.Position = [
+          (newNogo.coordinates[0][0] + newNogo.coordinates[1][0]) / 2 + 10e-7,
+          (newNogo.coordinates[0][1] + newNogo.coordinates[1][1]) / 2 + 10e-7,
+          (newNogo.coordinates[0][2] + newNogo.coordinates[1][2]) / 2,
+        ];
+        updatedNewNogo.coordinates = [
+          newNogo.coordinates[0],
+          newCoord,
+          newNogo.coordinates[1],
+        ];
+      }
+      return updatedNewNogo;
+    });
+
     fetch('/api/nogos', {
       method: 'POST',
       headers: {
