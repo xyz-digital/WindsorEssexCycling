@@ -403,7 +403,6 @@ document.addEventListener('DOMContentLoaded', function () {
     nogoControl.update();
     submitControl.update();
     deleteNogoControl.update();
-    fixNogoControl.update(); // TODO: Remove
     cursorLineLayerGroup.clearLayers();
     if (isEditingNogos) {
       toggleShowAllNogos();
@@ -445,29 +444,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   };
   deleteNogoControl.addTo(map);
-
-  // Fix nogo button
-  var fixNogoControl = (L as any).control({ position: 'bottomright' });
-  fixNogoControl.onAdd = function () {
-    this._div = L.DomUtil.create('button', 'submit-button');
-    this.update();
-    return this._div;
-  };
-  fixNogoControl.update = function () {
-    const controlDiv: HTMLDivElement = this._div;
-    controlDiv.onclick = (e) => {
-      e.stopPropagation();
-      fixNogos();
-    };
-    if (isEditingNogos) {
-      controlDiv.innerHTML = 'Fix nogos';
-      controlDiv.style.display = 'block';
-    } else {
-      controlDiv.innerHTML = '';
-      controlDiv.style.display = 'none';
-    }
-  };
-  fixNogoControl.addTo(map);
 
   // Submit button
   var submitControl = (L as any).control({ position: 'bottomright' });
