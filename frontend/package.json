@@ -14,6 +14,7 @@
     "leaflet": "1.7.1",
     "leaflet-easybutton": "2.4.0",
     "leaflet-fullhash": "1.0.0",
+    "leaflet-geosearch": "^3.6.0",
     "tingle.js": "0.16.0"
   },
   "devDependencies": {

@@ -1,4 +1,5 @@
 import L, { LeafletKeyboardEvent, LeafletMouseEvent } from 'leaflet';
+import { GeoSearchControl, GoogleProvider, OpenStreetMapProvider } from 'leaflet-geosearch';
 
 import '@bagage/leaflet.restoreview';
 import 'leaflet-fullhash';
@@ -190,6 +191,7 @@ document.addEventListener('DOMContentLoaded', function () {
       markerLayerGroup
     );
     newRouteMarkers.push(marker);
+    searchControl.update()
     if (isEditingNogos && newRouteMarkers.length >= 2) {
       fetchDirections();
     }
@@ -379,7 +381,8 @@ document.addEventListener('DOMContentLoaded', function () {
       ? buttonActiveColor
       : buttonDefaultColor;
     clearRoutes();
-    nogoControl.update();
+    // nogoControl.update();
+    searchControl.update();
     submitControl.update();
     deleteNogoControl.update();
     cursorLineLayerGroup.clearLayers();
@@ -448,27 +451,178 @@ document.addEventListener('DOMContentLoaded', function () {
   submitControl.addTo(map);
 
   // Nogo popup when editing
-  var nogoControl = (L as any).control({ position: 'topright' });
-  nogoControl.onAdd = function () {
-    this._div = L.DomUtil.create('div', 'nogo-control');
-    this.update();
-    return this._div;
-  };
-  nogoControl.update = function () {
-    const controlDiv: HTMLDivElement = this._div;
-    if (isEditingNogos) {
-      controlDiv.innerHTML = 'You are editing no-go routes';
-      controlDiv.style.display = 'block';
-    } else {
-      controlDiv.innerHTML = '';
-      controlDiv.style.display = 'none';
-    }
-  };
-  nogoControl.addTo(map);
+  // var nogoControl = (L as any).control({ position: 'topright' });
+  // nogoControl.onAdd = function () {
+  //   this._div = L.DomUtil.create('div', 'nogo-control');
+  //   this.update();
+  //   return this._div;
+  // };
+  // nogoControl.update = function () {
+  //   const controlDiv: HTMLDivElement = this._div;
+  //   if (isEditingNogos) {
+  //     controlDiv.innerHTML = 'You are editing no-go routes';
+  //     controlDiv.style.display = 'block';
+  //   } else {
+  //     controlDiv.innerHTML = '';
+  //     controlDiv.style.display = 'none';
+  //   }
+  // };
+  // nogoControl.addTo(map);
+
+  // var searchControl = (L as any).control({ position: 'topright' });
+  // searchControl.onAdd = function () {
+  //   this._div = L.DomUtil.create('div', 'search-control');
+  //   this._div.innerHTML = 'Search ...'
+  //   // this.update();
+  //   return this._div;
+  // };
+  // searchControl.update = function () {
+  //   const controlDiv: HTMLDivElement = this._div;
+  //   if (isEditingNogos) {
+  //     controlDiv.innerHTML = 'You are editing no-go routes';
+  //     controlDiv.style.display = 'block';
+  //   } else {
+  //     controlDiv.innerHTML = '';
+  //     controlDiv.style.display = 'none';
+  //   }
+  // };
+  // searchControl.addTo(map);
+
 
   // ============
   // Easy buttons
   // ============
+
+  // const provider = new OpenStreetMapProvider();
+  const provider =  new GoogleProvider({
+    params:{
+      key: 'AIzaSyDjcwjQH4vJuVF8c0EY73uDkYf1Xz4Ot1Y',
+    },
+  })
+
+  const SearchControl = L.Control.extend({
+    // form: new HTMLElement(),
+    container: L.DomUtil.create('div', 'directions-ui'),
+    points: [] as HTMLElement [],
+    newPointOpen: false,
+    options: {
+      position: 'topright',
+      placeholder: 'Search ...'
+    },
+    initialize: function (options: any) {
+      L.Util.setOptions(this, options);
+    },
+    onAdd: function () {
+      // const container = L.DomUtil.create('div', 'directions-ui');
+      L.DomEvent.disableClickPropagation(this.container);
+      this.update();
+      return this.container;
+    },
+    update: function () {
+      console.log('here:', newRouteMarkers)
+      L.DomUtil.empty(this.container)
+
+      newRouteMarkers.forEach((marker, index) => {
+        const point = L.DomUtil.create('div', 'leaflet-control search-control', this.container);
+        // const pointLabel = L.DomUtil.create('i', `search-control__icon fa fa-regular fa-${index}`, point);
+        const pointLabel = L.DomUtil.create('label', 'search-control__label', point);
+        pointLabel.innerHTML = index === 0 ? 'Start:' : `Stop ${index}:`;
+        const pointInput = L.DomUtil.create('input', 'search-control__input', point);
+        pointInput.type = 'text';
+        pointInput.placeholder = this.options.placeholder;
+        this.points.push(point);
+
+
+      
+      const pointDelete = L.DomUtil.create('i', 'search-control__icon fa-regular fa-circle-xmark', point);
+      })
+
+      if (!this.newPointOpen) {
+        const addNew = L.DomUtil.create('div', 'search-control', this.container);
+        const addNewBtn = L.DomUtil.create('button','search-control__button', addNew);
+        addNewBtn.innerText = 'Add starting point ...'
+        addNewBtn.onclick = () => {
+          this.newPointOpen = true;
+          this.update();
+        }
+      } else { 
+        const point = L.DomUtil.create('div', 'search-control', this.container);
+        // const pointLabel = L.DomUtil.create('i', `search-control__icon fa fa-regular fa-${index}`, point);
+        const pointLabel = L.DomUtil.create('label', 'search-control__label', point);
+        pointLabel.innerHTML = newRouteMarkers.length === 0 ? 'Start:' : `Stop ${newRouteMarkers.length}:`;
+        const pointInput = L.DomUtil.create('input', 'search-control__input', point);
+        pointInput.type = 'text';
+        pointInput.placeholder = this.options.placeholder;
+        L.DomEvent.addListener(
+          pointInput, 
+          'keypress', 
+          (e) => {
+            this.onKeyPress(e, newRouteMarkers.length) 
+          },
+          this
+        )
+        this.points.push(point);
+
+      }
+      
+      // (this as any ).form = L.DomUtil.create('form', 'form', container);
+      // const from = L.DomUtil.create('form', 'search-control', this.container);
+      // const fromLabel = L.DomUtil.create('label', 'search-control__label', from);
+      // fromLabel.innerHTML = 'From:';
+      // const fromInput = L.DomUtil.create('input', 'search-control__input', from);
+      // fromInput.type = 'text';
+      // fromInput.placeholder = this.options.placeholder;
+
+      // const next = L.DomUtil.create('form', 'search-control', this.container);
+      // const nexticon = L.DomUtil.create('i', 'search-control__icon fa-solid fa-arrow-down', next);
+
+      // const to = L.DomUtil.create('form', 'search-control', this.container);
+      // const toLabel = L.DomUtil.create('label', 'search-control__label', to);
+      // toLabel.innerHTML = 'Destination:';
+      // const toInput = L.DomUtil.create('input', 'search-control__input', to);
+      // toInput.type = 'text';
+      // toInput.placeholder = this.options.placeholder;
+
+
+      // toLabel.innerHTML = 'Destination:';
+      // (this as any).input = L.DomUtil.create('input', 'search-control__input', to);
+      // (this as any).input.type = 'text';
+      // (this as any).input.placeholder = (this as any).options.placeholder;
+
+      // (this as any).results = L.DomUtil.create('div', 'list-group', group);
+      // L.DomEvent.addListener((this as any).input, 'keyup', _.debounce((this as any).keyup, 300), this);
+      // L.DomEvent.addListener(fromControl, 'submit', this.submit, this);
+      // return this.container
+    },
+    onRemove: function (map: any) {
+
+    },
+    submit: function () {
+      alert('SUBMITTED');
+    },
+    onKeyPress: async function (e: any, index: number) {
+      if (e.key === 'Enter') {
+        // fetchDirections();
+        console.log('SEARCH VALUE', e.target.value)
+        const results = await provider.search({ query: e.target.value })
+        console.log('SEARCH RESULTS', results)
+        // alert('TIME TO SEARCH')
+        L.DomUtil.create('label', 'search-control__results', this.points[index]);
+      }
+    }
+  })
+
+  const searchControl = new SearchControl();
+  searchControl.addTo(map);
+
+  // const control = L.control.search({
+  //   position: 'topright'
+  // })
+
+  // const searchControl = GeoSearchControl({
+  //   provider: provider,
+  // }).addTo(map);
+  // // map.addControl(searchControl);
 
   // clear routes button
   L.easyButton(
