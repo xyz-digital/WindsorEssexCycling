@@ -471,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const provider =  new GoogleProvider({
     params:{
-      key: 'AIzaSyDjcwjQH4vJuVF8c0EY73uDkYf1Xz4Ot1Y',
+      key: process.env.GOOGLE_MAPS_API_KEY || '',
     },
   });
 
