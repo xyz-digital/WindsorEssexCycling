@@ -483,7 +483,6 @@ document.addEventListener('DOMContentLoaded', function () {
     container: L.DomUtil.create('div', 'search-control'),
     input: L.DomUtil.create('input'),
     results: L.DomUtil.create('div'),
-    // isResultsOpen: false,
     options: {
       position: 'topright',
     },
@@ -493,16 +492,15 @@ document.addEventListener('DOMContentLoaded', function () {
     onAdd: function () {
       L.DomEvent.disableClickPropagation(this.container);
       this.input = L.DomUtil.create('input', 'search-control__input', this.container);
-      this.results = L.DomUtil.create('div', 'search-control__results search-control__results--none', this.container),
+      this.results = L.DomUtil.create('div', 'search-control__results search-control__results--none', this.container);
       this.input.placeholder = 'Search ...';
       this.input.type = 'text';
-
       L.DomEvent.addListener(
         this.input, 
         'keydown', 
         _.debounce(this.onKeyPress, 500),
         this
-      )
+      );
       return this.container;
     },
     update: function () {
@@ -513,7 +511,12 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     },
     onRemove: function () {
-
+      L.DomEvent.removeListener(
+        this.input, 
+        'keydown', 
+        this.onKeyPress,
+        this
+      );
     },
     onKeyPress: async function (e: any) {
       L.DomUtil.empty(this.results);
@@ -532,11 +535,8 @@ document.addEventListener('DOMContentLoaded', function () {
           this.input.value = ''
         };
       })
-
     }
-
   });
-
   
   const searchControl = new SearchControl();
   searchControl.addTo(map);
