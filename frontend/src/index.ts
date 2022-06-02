@@ -1,4 +1,6 @@
 import L, { LeafletKeyboardEvent, LeafletMouseEvent } from 'leaflet';
+import { EsriProvider, GoogleProvider, OpenStreetMapProvider } from 'leaflet-geosearch';
+import _ from 'lodash';
 
 import '@bagage/leaflet.restoreview';
 import 'leaflet-fullhash';
@@ -403,6 +405,7 @@ document.addEventListener('DOMContentLoaded', function () {
     nogoControl.update();
     submitControl.update();
     deleteNogoControl.update();
+    searchControl.update();
     cursorLineLayerGroup.clearLayers();
     if (isEditingNogos) {
       toggleShowAllNogos();
@@ -486,6 +489,78 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   };
   nogoControl.addTo(map);
+
+  const provider =  new GoogleProvider({
+    params:{
+      key: process.env.GOOGLE_MAPS_API_KEY || '',
+    },
+  });
+
+  // alternative provider options
+  // const provider =  new OpenStreetMapProvider();
+  // const provider = new EsriProvider();
+
+  const SearchControl = L.Control.extend({
+    container: L.DomUtil.create('div', 'search-control'),
+    input: L.DomUtil.create('input'),
+    results: L.DomUtil.create('div'),
+    options: {
+      position: 'topright',
+    },
+    function (options: any) {
+      L.Util.setOptions(this, options);
+    },
+    onAdd: function () {
+      L.DomEvent.disableClickPropagation(this.container);
+      this.input = L.DomUtil.create('input', 'search-control__input', this.container);
+      this.results = L.DomUtil.create('div', 'search-control__results search-control__results--none', this.container);
+      this.input.placeholder = 'Search ...';
+      this.input.type = 'text';
+      L.DomEvent.addListener(
+        this.input, 
+        'keydown', 
+        _.debounce(this.onKeyPress, 500),
+        this
+      );
+      return this.container;
+    },
+    update: function () {
+      if (isEditingNogos) {
+        this.container.style.display = 'none';
+      } else {
+        this.container.style.display = 'flex';
+      }
+    },
+    onRemove: function () {
+      L.DomEvent.removeListener(
+        this.input, 
+        'keydown', 
+        this.onKeyPress,
+        this
+      );
+    },
+    onKeyPress: async function (e: any) {
+      L.DomUtil.empty(this.results);
+      const addresses = await provider.search({ query: e.target.value });
+      this.results.className = `search-control__results${addresses.length > 0 ? '' : '--none'}`
+      addresses.slice(0, 5).forEach((address) => {
+        const result = L.DomUtil.create('div', 'search-control__result', this.results);
+        result.innerText = address.label;
+        result.onclick = (e) => {
+          const marker = L.marker([address.y, address.x], { icon: markerIcon }).addTo(
+            markerLayerGroup
+          );
+          newRouteMarkers.push(marker);
+          L.DomUtil.empty(this.results);
+          this.results.className = `search-control__results--none`
+          this.input.value = ''
+        };
+      })
+    }
+  });
+  
+  const searchControl = new SearchControl();
+  searchControl.addTo(map);
 
   // ============
   // Easy buttons

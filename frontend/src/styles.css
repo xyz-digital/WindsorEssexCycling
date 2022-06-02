@@ -147,3 +147,45 @@ div#map {
   border-radius: 5px;
   cursor: pointer;
 }
+
+.search-control {
+  width: 425px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-control--hidden {
+  display: none;
+}
+
+.search-control__input {
+  padding: 8px;
+  background-color: #fff;
+  border-radius: 4px;
+  border: 2px solid rgba(0,0,0,0.2);
+}
+
+.search-control__results {
+  background-color: #fff;
+  border-radius: 4px;
+  border: 2px solid rgba(0,0,0,0.2);
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-control__result{
+  padding: 8px;
+  cursor: pointer;
+}
+
+.search-control__result:hover {
+  background-color: rgb(243, 243, 243);
+}
+
+.search-control__results--none {
+  display: none;
+}
