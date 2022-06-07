@@ -1,6 +1,11 @@
 import L, { LeafletKeyboardEvent, LeafletMouseEvent } from 'leaflet';
-import { EsriProvider, GoogleProvider, OpenStreetMapProvider } from 'leaflet-geosearch';
+import {
+  EsriProvider,
+  GoogleProvider,
+  OpenStreetMapProvider,
+} from 'leaflet-geosearch';
 import _ from 'lodash';
+import stringHash from 'string-hash';
 
 import '@bagage/leaflet.restoreview';
 import 'leaflet-fullhash';
@@ -89,6 +94,45 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // =====================
+  // Handle password modal
+  // =====================
+  const passModal = new tingle.modal({
+    footer: true,
+    closeMethods: ['escape'],
+  });
+
+  passModal.setContent(
+    checkQuerySelector(document, '#pass-modal-content').innerHTML
+  );
+
+  passModal.addFooterBtn(
+    'Enter',
+    'tingle-btn tingle-btn--primary tingle-btn--pull-right',
+    () => {
+      const enteredPass = (
+        passModal.getContent().children[1] as HTMLInputElement
+      ).value;
+      const passwordValidated = validatePassword(enteredPass);
+      if (passwordValidated) {
+        isNogosUnlocked = true;
+        toggleNogoMode();
+      } else {
+        alert('Access denied');
+      }
+      passModal.close();
+    }
+  );
+
+  passModal.addFooterBtn('Cancel', 'tingle-btn tingle-btn--pull-right', () => {
+    passModal.close();
+  });
+
+  const validatePassword = (password: string) => {
+    const hashedPass = stringHash(password);
+    return hashedPass === 1942527348;
+  };
+
   // ==========
   // Handle map
   // ==========
@@ -137,6 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Modes
   var isEditingNogos = false;
   var showAllNogos = false;
+  var isNogosUnlocked = false;
 
   // Map feature containers
   var newRouteMarkers: L.Marker[] = []; // markers currently being selected for a new route
@@ -396,6 +441,10 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   const toggleNogoMode = () => {
+    if (!isNogosUnlocked) {
+      passModal.open();
+      return;
+    }
     isEditingNogos = !isEditingNogos;
     addNogosButton.state(isEditingNogos ? 'nogoMode' : 'notNogoMode');
     (addNogosButton as any).button.style.backgroundColor = isEditingNogos
@@ -490,8 +539,8 @@ document.addEventListener('DOMContentLoaded', function () {
   };
   nogoControl.addTo(map);
 
-  const provider =  new GoogleProvider({
-    params:{
+  const provider = new GoogleProvider({
+    params: {
       key: process.env.GOOGLE_MAPS_API_KEY || '',
     },
   });
@@ -507,18 +556,26 @@ document.addEventListener('DOMContentLoaded', function () {
     options: {
       position: 'topright',
     },
-    function (options: any) {
+    function(options: any) {
       L.Util.setOptions(this, options);
     },
     onAdd: function () {
       L.DomEvent.disableClickPropagation(this.container);
-      this.input = L.DomUtil.create('input', 'search-control__input', this.container);
-      this.results = L.DomUtil.create('div', 'search-control__results search-control__results--none', this.container);
+      this.input = L.DomUtil.create(
+        'input',
+        'search-control__input',
+        this.container
+      );
+      this.results = L.DomUtil.create(
+        'div',
+        'search-control__results search-control__results--none',
+        this.container
+      );
       this.input.placeholder = 'Search ...';
       this.input.type = 'text';
       L.DomEvent.addListener(
-        this.input, 
-        'keydown', 
+        this.input,
+        'keydown',
         _.debounce(this.onKeyPress, 500),
         this
       );
@@ -532,33 +589,34 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     },
     onRemove: function () {
-      L.DomEvent.removeListener(
-        this.input, 
-        'keydown', 
-        this.onKeyPress,
-        this
-      );
+      L.DomEvent.removeListener(this.input, 'keydown', this.onKeyPress, this);
     },
     onKeyPress: async function (e: any) {
       L.DomUtil.empty(this.results);
       const addresses = await provider.search({ query: e.target.value });
-      this.results.className = `search-control__results${addresses.length > 0 ? '' : '--none'}`
+      this.results.className = `search-control__results${
+        addresses.length > 0 ? '' : '--none'
+      }`;
       addresses.slice(0, 5).forEach((address) => {
-        const result = L.DomUtil.create('div', 'search-control__result', this.results);
+        const result = L.DomUtil.create(
+          'div',
+          'search-control__result',
+          this.results
+        );
         result.innerText = address.label;
         result.onclick = (e) => {
-          const marker = L.marker([address.y, address.x], { icon: markerIcon }).addTo(
-            markerLayerGroup
-          );
+          const marker = L.marker([address.y, address.x], {
+            icon: markerIcon,
+          }).addTo(markerLayerGroup);
           newRouteMarkers.push(marker);
           L.DomUtil.empty(this.results);
-          this.results.className = `search-control__results--none`
-          this.input.value = ''
+          this.results.className = `search-control__results--none`;
+          this.input.value = '';
         };
-      })
-    }
+      });
+    },
   });
-  
+
   const searchControl = new SearchControl();
   searchControl.addTo(map);
 
